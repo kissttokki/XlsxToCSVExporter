@@ -7,12 +7,8 @@
     <Nullable>enable</Nullable>
 	 <ResourceLanguages>en</ResourceLanguages>
 	  <SatelliteResourceLanguages>en-US;en</SatelliteResourceLanguages>
+	  <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="ClassTamplate.cs" />
-    <Compile Remove="EnumTamplate.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <COMReference Include="Microsoft.Office.Core">
@@ -34,18 +30,6 @@
       <EmbedInteropTypes>true</EmbedInteropTypes>
       <Private>True</Private>
     </COMReference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="ClassTamplate.cs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="EnumTamplate.cs">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
   <ItemGroup>

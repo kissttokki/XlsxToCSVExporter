@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -9,17 +10,29 @@ namespace TableExporter
 {
     internal class Config
     {
-        public string EXTRACT_CLASS_PATH { get; set; }
-
-        public string EXTRACT_PATH { get; set; }
-
-        public string EXTRACT_ENUM_PATH { get; set; } = "/enum";
-
         [JsonIgnore]
-        public DirectoryInfo EXTRACT_TARGET { get; set; }
+        public Regex DataRegex { get; private set; } = new Regex(",(?=(?:(?:[^\"]*\"[^\"]*\")*[^\"]*$))");
 
-        [JsonIgnore]
-        public DirectoryInfo EXTRACT_ENUM_TARGET { get; set; }
+        public int ColumnNameRow { get; set; } = 0;
+        public int DataTypeRow { get; set; } = 1;
+        public int BuildTargetRow { get; set; } = 2;
+        public int DescriptionRow { get; set; } = 3;
+        public int DataRow { get; set; } = 4;
+
+        public int EnumColumnNameRow { get; set; } = 0;
+        public int EnumBuildTargetRow { get; set; } = 1;
+        public int EnumDataRow { get; set; } = 3;
+
+
+        public string XlsxTargetsFolder { get; set; }
+        
+        public string OutputServerCSVDir { get; set; }
+        public string OutputClientCSVDir { get; set; }
+        public string OutputServerCsharpScriptDir { get; set; }
+        public string OutputClientCsharpScriptDir { get; set; }
+
+
+        public string ResultNameSpace { get; set; }
 
 
 
