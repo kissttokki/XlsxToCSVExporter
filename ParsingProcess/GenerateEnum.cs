@@ -108,17 +108,17 @@ namespace TableExporter
             foreach (var enumData in clientCSV.GetEnumCodes())
             {
                 if (string.IsNullOrWhiteSpace(Config.Default.OutputClientCsharpScriptDir) == false)
-                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCsharpScriptDir}/{enumData.name}.cs", enumData.code);
+                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCsharpScriptDir}/enum/{enumData.name}.cs", enumData.code);
                 else
-                    FileExtension.SaveTextFileSafety($"output/client/cs/{enumData.name}.cs", enumData.code);
+                    FileExtension.SaveTextFileSafety($"output/client/cs/enum/{enumData.name}.cs", enumData.code);
             }
 
             foreach (var enumData in serverCSV.GetEnumCodes())
             {
                 if (string.IsNullOrWhiteSpace(Config.Default.OutputServerCsharpScriptDir) == false)
-                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCsharpScriptDir}/{enumData.name}.cs", enumData.code);
+                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCsharpScriptDir}/enum/{enumData.name}.cs", enumData.code);
                 else
-                    FileExtension.SaveTextFileSafety($"output/server/cs/{enumData.name}.cs", enumData.code);
+                    FileExtension.SaveTextFileSafety($"output/server/cs/enum/{enumData.name}.cs", enumData.code);
             }
         }
     }

@@ -105,7 +105,32 @@ namespace TableExporter
             if (WorkBooks != null) Marshal.ReleaseComObject(WorkBooks);
             WorkBooks = null;
 
-            
+
+            if (tableList.Count > 0)
+            {
+                Console.WriteLine($"[BaseTable] Generate BaseTable CS...");
+
+                var codes = File.ReadAllText("./BaseTableTemplate.cs");
+                if (string.IsNullOrWhiteSpace(Config.Default.OutputClientCsharpScriptDir) == false)
+                {
+                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCsharpScriptDir}/BaseTableTemplate.cs", codes);
+                }
+                else
+                {
+                    FileExtension.SaveTextFileSafety($"output/client/cs/BaseTableTemplate.cs", codes);
+                }
+
+                if (string.IsNullOrWhiteSpace(Config.Default.OutputServerCsharpScriptDir) == false)
+                {
+                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCsharpScriptDir}/BaseTableTemplate.cs", codes);
+                }
+                else
+                {
+                    FileExtension.SaveTextFileSafety($"output/server/cs/BaseTableTemplate.cs", codes);
+                }
+            }
+
+
             foreach (var csvPath in tableList)
             {
                 var sheetName = Path.GetFileName(csvPath);

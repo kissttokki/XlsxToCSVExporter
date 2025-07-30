@@ -11,6 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="BaseTableTemplate.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <COMReference Include="Microsoft.Office.Core">
       <WrapperTool>tlbimp</WrapperTool>
       <VersionMinor>8</VersionMinor>
@@ -30,6 +34,12 @@
       <EmbedInteropTypes>true</EmbedInteropTypes>
       <Private>True</Private>
     </COMReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="BaseTableTemplate.cs">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

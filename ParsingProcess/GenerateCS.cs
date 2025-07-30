@@ -22,67 +22,65 @@ namespace TableExporter
 
             Dictionary<int, CSVWriter[]> buildTargetWirters = new Dictionary<int, CSVWriter[]>();
 
+            string[] colRowDatas = Config.Default.DataRegex.Split(lines.ElementAt(Config.Default.ColumnNameRow));
+            string[] buildTargetRows = Config.Default.DataRegex.Split(lines.ElementAt(Config.Default.BuildTargetRow));
+            string[] dataTypeRowData = Config.Default.DataRegex.Split(lines.ElementAt(Config.Default.DataTypeRow));
+
+            for (int col = 0; col < buildTargetRows.Length; col++)
             {
-                string[] colRowDatas = Config.Default.DataRegex.Split(lines.ElementAt(Config.Default.ColumnNameRow));
-                string[] buildTargetRows = Config.Default.DataRegex.Split(lines.ElementAt(Config.Default.BuildTargetRow));
-                string[] dataTypeRowData = Config.Default.DataRegex.Split(lines.ElementAt(Config.Default.DataTypeRow));
-
-
-                for (int col = 0; col < buildTargetRows.Length; col++)
+                if (string.IsNullOrWhiteSpace(colRowDatas[col]) == true || colRowDatas[col].StartsWith('#') == true)
                 {
-                    if (string.IsNullOrWhiteSpace(colRowDatas[col]) == true || colRowDatas[col].StartsWith('#') == true)
-                    {
-                        continue;
-                    }
+                    continue;
+                }
 
-                    if (string.IsNullOrWhiteSpace(buildTargetRows[0]) == true)
-                    {
-                        Console.BackgroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟이 없습니다. 스킵됩니다.");
-                        Console.BackgroundColor = default;
-                        colRowDatas[col] = string.Empty;
-                        continue;
-                    }
+                if (string.IsNullOrWhiteSpace(buildTargetRows[0]) == true)
+                {
+                    Console.BackgroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟이 없습니다. 스킵됩니다.");
+                    Console.BackgroundColor = default;
+                    colRowDatas[col] = string.Empty;
+                    continue;
+                }
 
-                    if (string.IsNullOrWhiteSpace(dataTypeRowData[col]) == true)
+                if (string.IsNullOrWhiteSpace(dataTypeRowData[col]) == true)
+                {
+                    Console.BackgroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 데이터 타입이 없습니다. 스킵됩니다.");
+                    Console.BackgroundColor = default;
+                    continue;
+                }
+                else
+                {
+                    var value = buildTargetRows[col].ToLower();
+                    if (value == "both")
                     {
-                        Console.BackgroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 데이터 타입이 없습니다. 스킵됩니다.");
-                        Console.BackgroundColor = default;
-                        continue;
+                        buildTargetWirters.Add(col, new CSVWriter[] { clientCSV, serverCSV });
+                    }
+                    else if (value == "client")
+                    {
+                        buildTargetWirters.Add(col, new CSVWriter[] { clientCSV });
+                    }
+                    else if (value == "server")
+                    {
+                        buildTargetWirters.Add(col, new CSVWriter[] { serverCSV });
                     }
                     else
                     {
-                        var value = buildTargetRows[col].ToLower();
-                        if (value == "both")
-                        {
-                            buildTargetWirters.Add(col, new CSVWriter[] { clientCSV, serverCSV });
-                        }
-                        else if (value == "client")
-                        {
-                            buildTargetWirters.Add(col, new CSVWriter[] { clientCSV });
-                        }
-                        else if (value == "server")
-                        {
-                            buildTargetWirters.Add(col, new CSVWriter[] { serverCSV });
-                        }
-                        else
-                        {
-                            Console.BackgroundColor = ConsoleColor.Red;
-                            Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟 {buildTargetRows[col].ToLower()}을 알 수 없습니다. 스킵됩니다.");
-                            Console.BackgroundColor = default;
-                            Console.WriteLine();
-                            continue;
-                        }
+                        Console.BackgroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟 {buildTargetRows[col].ToLower()}을 알 수 없습니다. 스킵됩니다.");
+                        Console.BackgroundColor = default;
+                        Console.WriteLine();
+                        continue;
+                    }
 
-                        foreach (var writer in buildTargetWirters[col])
-                        {
-                            writer.columns.Add(col, colRowDatas[col]);
-                            writer.dataTypes.Add(col, dataTypeRowData[col]);
-                        }
+                    foreach (var writer in buildTargetWirters[col])
+                    {
+                        writer.columns.Add(col, colRowDatas[col]);
+                        writer.dataTypes.Add(col, dataTypeRowData[col]);
                     }
                 }
             }
+            
 
 
 
@@ -100,7 +98,7 @@ namespace TableExporter
                     if (buildTargetWirters.TryGetValue(dataCol, out CSVWriter[]? targetWriters) == true)
                     {
                         string cell = datas[dataCol];
-                        if (numericTypes.Contains(cell) == true)
+                        if (numericTypes.Contains(dataTypeRowData[dataCol]) == true)
                         {
                             cell = cell.Replace(",", "");
                         }
@@ -139,23 +137,26 @@ namespace TableExporter
             }
 
 
+
+            string className = sheetName.Replace(".csv", "");
+            
             ///CSharpScript
             if (string.IsNullOrWhiteSpace(Config.Default.OutputClientCsharpScriptDir) == false)
             {
-                FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCsharpScriptDir}/{sheetName}", clientCSV.GetClassCode(sheetName.Replace(".csv", "")));
+                FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCsharpScriptDir}/{className}.cs", clientCSV.GetClassCode(className));
             }
             else
             {
-                FileExtension.SaveTextFileSafety($"output/client/cs/{sheetName}", clientCSV.GetClassCode(sheetName.Replace(".csv", "")));
+                FileExtension.SaveTextFileSafety($"output/client/cs/{className}.cs", clientCSV.GetClassCode(className));
             }
 
             if (string.IsNullOrWhiteSpace(Config.Default.OutputServerCsharpScriptDir) == false)
             {
-                FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCsharpScriptDir}/{sheetName}", serverCSV.GetClassCode(sheetName.Replace(".csv", "")));
+                FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCsharpScriptDir}/{className}.cs", serverCSV.GetClassCode(className));
             }
             else
             {
-                FileExtension.SaveTextFileSafety($"output/server/cs/{sheetName}", serverCSV.GetClassCode(sheetName.Replace(".csv", "")));
+                FileExtension.SaveTextFileSafety($"output/server/cs/{className}.cs", serverCSV.GetClassCode(className));
             }
         }
 
