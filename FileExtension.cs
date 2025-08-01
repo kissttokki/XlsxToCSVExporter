@@ -8,6 +8,19 @@ namespace TableExporter
 {
     internal static class FileExtension
     {
+        public static void ProcessCreateFile(string dirPath, string fileName, string fileBody, string addKey = null)
+        {
+            if (string.IsNullOrWhiteSpace(dirPath) == false)
+            {
+                SaveTextFileSafety($"{dirPath}/{fileName}", fileBody);
+            }
+            else
+            {
+                SaveTextFileSafety($"output{addKey}/{fileName}", fileBody);
+            }
+        }
+
+
         public static void SaveTextFileSafety(string path, string text)
         {
             var dir = Path.GetDirectoryName(path);

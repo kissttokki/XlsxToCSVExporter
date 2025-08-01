@@ -118,47 +118,13 @@ namespace TableExporter
             }
 
 
-            if (string.IsNullOrWhiteSpace(Config.Default.OutputClientCSVDir) == false)
-            {
-                FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCSVDir}/{sheetName}", clientCSV.GetCSV());
-            }
-            else
-            {
-                FileExtension.SaveTextFileSafety($"output/client/csv/{sheetName}", clientCSV.GetCSV());
-            }
-
-            if (string.IsNullOrWhiteSpace(Config.Default.OutputServerCSVDir) == false)
-            {
-                FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCSVDir}/{sheetName}", serverCSV.GetCSV());
-            }
-            else
-            {
-                FileExtension.SaveTextFileSafety($"output/server/csv/{sheetName}", serverCSV.GetCSV());
-            }
-
-
+            FileExtension.ProcessCreateFile(Config.Default.OutputClientCSVDir, sheetName, clientCSV.GetCSV(), "/client");
+            FileExtension.ProcessCreateFile(Config.Default.OutputServerCSVDir, sheetName, serverCSV.GetCSV(), "/server");
 
             string className = sheetName.Replace(".csv", "");
-            
             ///CSharpScript
-            if (string.IsNullOrWhiteSpace(Config.Default.OutputClientCsharpScriptDir) == false)
-            {
-                FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCsharpScriptDir}/{className}.cs", clientCSV.GetClassCode(className));
-            }
-            else
-            {
-                FileExtension.SaveTextFileSafety($"output/client/cs/{className}.cs", clientCSV.GetClassCode(className));
-            }
-
-            if (string.IsNullOrWhiteSpace(Config.Default.OutputServerCsharpScriptDir) == false)
-            {
-                FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCsharpScriptDir}/{className}.cs", serverCSV.GetClassCode(className));
-            }
-            else
-            {
-                FileExtension.SaveTextFileSafety($"output/server/cs/{className}.cs", serverCSV.GetClassCode(className));
-            }
+            FileExtension.ProcessCreateFile(Config.Default.OutputClientCsharpScriptDir, $"{className}.cs", clientCSV.GetClassCode(className), "/client");
+            FileExtension.ProcessCreateFile(Config.Default.OutputServerCsharpScriptDir, $"{className}.cs", serverCSV.GetClassCode(className), "/server");
         }
-
     }
 }

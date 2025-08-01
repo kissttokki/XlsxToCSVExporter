@@ -75,7 +75,7 @@ namespace TableExporter
                 }
 
 
-                for (int row = Config.Default.DataRow; row < lines.Count(); row++)
+                for (int row = Config.Default.EnumDataRow; row < lines.Count(); row++)
                 {
                     string line = lines.ElementAt(row);
                     if (line.Length == 0 || line.Trim().All(t => t == ',')) continue;
@@ -107,18 +107,12 @@ namespace TableExporter
 
             foreach (var enumData in clientCSV.GetEnumCodes())
             {
-                if (string.IsNullOrWhiteSpace(Config.Default.OutputClientCsharpScriptDir) == false)
-                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputClientCsharpScriptDir}/enum/{enumData.name}.cs", enumData.code);
-                else
-                    FileExtension.SaveTextFileSafety($"output/client/cs/enum/{enumData.name}.cs", enumData.code);
+                FileExtension.ProcessCreateFile(Config.Default.OutputClientCsharpScriptDir, $"enum/{enumData.name}.cs", enumData.code, "/client");
             }
 
             foreach (var enumData in serverCSV.GetEnumCodes())
             {
-                if (string.IsNullOrWhiteSpace(Config.Default.OutputServerCsharpScriptDir) == false)
-                    FileExtension.SaveTextFileSafety($"{Config.Default.OutputServerCsharpScriptDir}/enum/{enumData.name}.cs", enumData.code);
-                else
-                    FileExtension.SaveTextFileSafety($"output/server/cs/enum/{enumData.name}.cs", enumData.code);
+                FileExtension.ProcessCreateFile(Config.Default.OutputServerCsharpScriptDir, $"enum/{enumData.name}.cs", enumData.code, "/server");
             }
         }
     }

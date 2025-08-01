@@ -7,15 +7,20 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
-using UnityEngine;
 
-public abstract class BaseTable<T> where T : new()
+
+public abstract class BaseTableData<K>
 {
-    public virtual int Index { get; protected set; }
+    public abstract K GetKey();
+}
 
-    private static readonly Dictionary<int, T> s_dict = new Dictionary<int, T>();
+public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
+{
+    protected static readonly Dictionary<K, T> s_dict = new Dictionary<K, T>();
 
-    public static T GetValue(int index)
+    public static IReadOnlyCollection<T> Datas => s_dict.Values;
+
+    public static T GetValue(K index)
     {
         if (s_dict.TryGetValue(index, out T result) == true)
         {
@@ -23,7 +28,11 @@ public abstract class BaseTable<T> where T : new()
         }
         else
         {
-            Debug.LogError($"[{typeof(T).Name}] not found index : {index}");
+#if UNITY_EDITOR
+            UnityEngine.Debug.LogError($"[{typeof(T).Name}] not found index : {index}");
+#else
+            Console.WriteLine($"[{typeof(T).Name}] not found index : {index}");
+#endif
         }
 
         return result;
@@ -189,7 +198,7 @@ public abstract class BaseTable<T> where T : new()
                 }
             }
 
-            s_dict.Add(s_dict.Count, data);
+            s_dict.Add(data.GetKey(), data);
         }
 
         int CountQuotes(string line)
@@ -241,6 +250,11 @@ public abstract class BaseTable<T> where T : new()
                 ? Convert.ChangeType(value.Replace("\\n", Environment.NewLine), type)
                 : Convert.ChangeType(value, type);
         }
+    }
+
+    protected virtual void OnEndParsing()
+    {
+
     }
 
     public static MemberSetterDelegate CreateMemberSetter(MemberInfo member)

@@ -30,9 +30,7 @@ namespace TableExporter
         public string OutputClientCSVDir { get; set; }
         public string OutputServerCsharpScriptDir { get; set; }
         public string OutputClientCsharpScriptDir { get; set; }
-
-
-        public string ResultNameSpace { get; set; }
+        public string ResultNameSpace { get; set; } 
 
 
 

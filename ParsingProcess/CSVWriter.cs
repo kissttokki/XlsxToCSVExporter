@@ -58,90 +58,80 @@ namespace TableExporter
             //    )
             //);
 
+
+            var indexCol = columns.FirstOrDefault(col => dataTypes[col.Key].Equals("Index", StringComparison.OrdinalIgnoreCase));
+            string indexType = indexCol.Value == null || (int.TryParse(resultDataLines.First().Value[indexCol.Key], out _) == true) ? "int" : "string";
+
             ///멤버 생성단
             var members = columns.Select(col =>
             {
-                var isIndexType = dataTypes[col.Key].Equals("Index", StringComparison.OrdinalIgnoreCase);
-                var isIndexName = col.Value.Equals("Index", StringComparison.OrdinalIgnoreCase);
-
-                var typeName = isIndexType ? "int" : dataTypes[col.Key];
-                var prop = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(typeName), col.Value)
-                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
-
-                /// Index 타입인데 컬럼명이 Index가 아닌 경우
-                if (isIndexType && !isIndexName)
-                {
-                    prop = prop.AddAccessorListAccessors(
+                PropertyDeclarationSyntax prop = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(col.Key == indexCol.Key ? indexType : dataTypes[col.Key]), col.Value)
+                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                    .AddAccessorListAccessors(
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
                         SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                             .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)))
                             .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
                     );
+                return prop;
+            }).ToList();
 
-                    /// 추가로 override Index 프로퍼티 생성해서 연결
-                    var indexProp = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName("int"), "Index")
-                        .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.OverrideKeyword))
-                        .AddAccessorListAccessors(
-                            SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                                .WithExpressionBody(
-                                    SyntaxFactory.ArrowExpressionClause(
-                                        SyntaxFactory.IdentifierName(col.Value)
-                                    )
-                                )
-                                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
-                            SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.ProtectedKeyword)))
-                                .WithExpressionBody(
-                                    SyntaxFactory.ArrowExpressionClause(
-                                        SyntaxFactory.AssignmentExpression(
-                                            SyntaxKind.SimpleAssignmentExpression,
-                                            SyntaxFactory.IdentifierName(col.Value),
-                                            SyntaxFactory.IdentifierName("value")
-                                        )
-                                    )
-                                )
-                                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
-                        );
+            MethodDeclarationSyntax method = null;
 
-                    return new[] { prop, indexProp };
-                }
-                else
-                {
-                    /// Index 컬럼명이면 override Index로 생성
-                    if (isIndexType && isIndexName)
-                    {
-                        prop = prop.AddModifiers(SyntaxFactory.Token(SyntaxKind.OverrideKeyword));
-                    }
-
-                    prop = prop.AddAccessorListAccessors(
-                        SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
-                        SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                            .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)))
-                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
-                    );
-
-                    return new[] { prop };
-                }
-            }).SelectMany(p => p).ToArray();
-
-
-            var classDeclaration = SyntaxFactory.ClassDeclaration(className)
-                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-                .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"BaseTable<{className}>")))
-                .AddMembers(members);
-
-            MemberDeclarationSyntax finalMember = classDeclaration;
-
-            if (!string.IsNullOrWhiteSpace(Config.Default.ResultNameSpace))
+            if (indexCol.Value == null)
             {
-                finalMember = SyntaxFactory.NamespaceDeclaration(
-                    SyntaxFactory.ParseName(Config.Default.ResultNameSpace)
-                ).AddMembers(classDeclaration);
+                members.Add(SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName("int"), "AutoGenrate_INDEX")
+                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.ProtectedKeyword))
+                    .AddAccessorListAccessors(
+                        SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
+                        SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                            .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)))
+                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                    ));
+
+
+                method = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(indexType), "GetKey")
+                  .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.OverrideKeyword))
+                  .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(SyntaxFactory.IdentifierName("AutoGenrate_INDEX")))
+                  .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            }
+            else
+            {
+                method = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(indexType), "GetKey")
+                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.OverrideKeyword))
+                    .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(SyntaxFactory.IdentifierName(indexCol.Value)))
+                    .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
             }
 
-            compilationUnit = compilationUnit.AddMembers(finalMember);
+
+            ///데이터 클래스
+            ClassDeclarationSyntax dataClassDeclaration = SyntaxFactory.ClassDeclaration($"{className}Data")
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"BaseTableData<{indexType}>")))
+                .AddMembers(members.ToArray())
+                .AddMembers(method);
+
+
+            ClassDeclarationSyntax tableClassDeclaration = SyntaxFactory.ClassDeclaration(className)
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.PartialKeyword))
+                .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"BaseTable<{className}Data, {indexType}>")));
+
+
+
+            if (string.IsNullOrWhiteSpace(Config.Default.ResultNameSpace) == false)
+            {
+                compilationUnit = compilationUnit.AddMembers(
+                    SyntaxFactory.NamespaceDeclaration(
+                    SyntaxFactory.ParseName(Config.Default.ResultNameSpace)
+                ).AddMembers(dataClassDeclaration, tableClassDeclaration));
+            }
+            else
+            {
+                compilationUnit = compilationUnit.AddMembers(dataClassDeclaration, tableClassDeclaration);
+            }
+
 
             return compilationUnit.NormalizeWhitespace().ToFullString();
         }
