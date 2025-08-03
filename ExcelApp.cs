@@ -3,22 +3,36 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Office.Interop;
 using Microsoft.Office.Interop.Excel;
 using Newtonsoft.Json;
+using static TableExporter.CSVReader;
 
 namespace TableExporter
 {
     internal class ExcelApp : IDisposable
     {
+        private const string PATH_OUTPUT_CLIENT = "output/client";
+        private const string PATH_OUTPUT_SERVER = "output/server";
+
+        private const string PATH_OUTPUT_CLIENT_CSV = $"{PATH_OUTPUT_CLIENT}/csv";
+        private const string PATH_OUTPUT_SERVER_CSV = $"{PATH_OUTPUT_SERVER}/csv";
+
+        private const string PATH_OUTPUT_CLIENT_SCRIPT = $"{PATH_OUTPUT_CLIENT}/script";
+        private const string PATH_OUTPUT_SERVER_SCRIPT = $"{PATH_OUTPUT_SERVER}/script";
+
+        private const string PATH_OUTPUT_CLIENT_SCRIPT_ENUM = $"{PATH_OUTPUT_CLIENT_SCRIPT}/enum";
+        private const string PATH_OUTPUT_SERVER_SCRIPT_ENUM = $"{PATH_OUTPUT_SERVER_SCRIPT}/enum";
+
+
+
         private Stopwatch _stopWatch = new Stopwatch();
         private Application? _excelApp;
         private uint _excelProcID = 0;
-        private Dictionary<string, List<string>> _sheetInfos = new Dictionary<string, List<string>>();
-
 
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -69,27 +83,28 @@ namespace TableExporter
             _stopWatch.Start();
 
             List<string> tableList = new List<string>();
-            List<string> enumTarget = new List<string>();
+            List<string> enumList = new List<string>();
+            string ProcDirPath = new FileInfo(Environment.ProcessPath).Directory.FullName;
 
 
             var key = new FileInfo(filePath).Name;
-            _sheetInfos[key] = new List<string>();
+
+            Directory.CreateDirectory($"{ProcDirPath}/output");
 
             foreach (Worksheet sheet in WorkSheets)
             {
-                _sheetInfos[key].Add(sheet.Name);
                 if (sheet.Name.StartsWith("_") == true)
                 {
                     continue;
                 }
 
-                var tPath = $"{Path.GetTempPath()}{sheet.Name}.csv";
+                var tPath = $"{ProcDirPath}/output/{sheet.Name}.csv";
 
                 sheet.SaveAs(tPath, XlFileFormat.xlCSVUTF8, Local: true);
 
                 if (sheet.Name.StartsWith("enum_", StringComparison.OrdinalIgnoreCase) == true)
                 {
-                    enumTarget.Add(tPath);
+                    enumList.Add(tPath);
                 }
                 else
                 {
@@ -112,37 +127,111 @@ namespace TableExporter
 
                 var codes = File.ReadAllText("./BaseTableTemplate.cs");
 
-                FileExtension.ProcessCreateFile(Config.Default.OutputClientCsharpScriptDir, "BaseTable.cs", codes, "/client");
-                FileExtension.ProcessCreateFile(Config.Default.OutputServerCsharpScriptDir, "BaseTable.cs", codes, "/server");
+                FileExtension.ProcessCreateFile(PATH_OUTPUT_CLIENT_SCRIPT, "BaseTable.cs", codes);
+                FileExtension.ProcessCreateFile(PATH_OUTPUT_SERVER_SCRIPT, "BaseTable.cs", codes);
             }
+
+
+
+            if (Config.Default.SaveHistories == null)
+                Config.Default.SaveHistories = new Dictionary<string, CSVHashset>();
+
+            var fileName = Path.GetFileName(filePath);
+
+
+            var tempHistory = new CSVHashset(tableList, enumList);
 
 
             foreach (var csvPath in tableList)
             {
-                var sheetName = Path.GetFileName(csvPath);
+                CSVReader clientCSV = new CSVReader(csvPath, CSVWriteType.Client);
+                CSVReader serverCSV = new CSVReader(csvPath, CSVWriteType.Server);
+
+                string sheetName = Path.GetFileName(csvPath);
                 Console.WriteLine($"[{sheetName}] Parsing CSV...");
-                Processing.ParsingCSV(csvPath);
+
+                tempHistory.DataSheetNames.Add(FileExtension.ProcessCreateFile(PATH_OUTPUT_CLIENT_CSV, sheetName, clientCSV.GetCSV()));
+                tempHistory.DataSheetNames.Add(FileExtension.ProcessCreateFile(PATH_OUTPUT_SERVER_CSV, sheetName, serverCSV.GetCSV()));
+
+                string csName = sheetName.Replace(".csv", ".cs");
+
+                tempHistory.DataSheetNames.Add(FileExtension.ProcessCreateFile(PATH_OUTPUT_CLIENT_SCRIPT, csName, clientCSV.GetClassCode()));
+                tempHistory.DataSheetNames.Add(FileExtension.ProcessCreateFile(PATH_OUTPUT_SERVER_SCRIPT, csName, serverCSV.GetClassCode()));
 
                 Console.WriteLine($"[{sheetName}] Parsing CSV Done {_stopWatch.Elapsed.TotalSeconds}s");
                 _stopWatch.Restart();
             }
 
-            foreach (var csvPath in enumTarget)
+            foreach (var csvPath in enumList)
             {
-                var sheetName = Path.GetFileName(csvPath);
+                CSVReader clientCSV = new CSVReader(csvPath, CSVWriteType.Client);
+                CSVReader serverCSV = new CSVReader(csvPath, CSVWriteType.Server);
+
+                string sheetName = Path.GetFileName(csvPath);
+
                 Console.WriteLine($"[{sheetName}] Parsing Enum...");
-                Processing.GenerateEnum(csvPath);
+                foreach (var enumCode in clientCSV.GetEnumCodes())
+                {
+                    tempHistory.EnumSheetNames.Add(FileExtension.ProcessCreateFile(PATH_OUTPUT_CLIENT_SCRIPT_ENUM, $"{enumCode.name}.cs", enumCode.code));
+                }
+
+                foreach (var enumCode in serverCSV.GetEnumCodes())
+                {
+                    tempHistory.EnumSheetNames.Add(FileExtension.ProcessCreateFile(PATH_OUTPUT_SERVER_SCRIPT_ENUM, $"{enumCode.name}.cs", enumCode.code));
+                }
+
                 Console.WriteLine($"[{sheetName}] Parsing Enum Done {_stopWatch.Elapsed.TotalSeconds}s");
                 _stopWatch.Restart();
             }
 
 
+            if(string.IsNullOrEmpty(Config.Default.XlsxTargetsFolder) == false)
+                File.WriteAllText($"{Config.Default.XlsxTargetsFolder}/_sheetInfos.txt", JsonConvert.SerializeObject(Config.Default.SaveHistories, Formatting.Indented));
 
 
-            File.WriteAllText($"{Config.Default.XlsxTargetsFolder}/_sheetInfos.txt", JsonConvert.SerializeObject(_sheetInfos, Formatting.Indented));
+
+            if (Config.Default.SaveHistories.TryGetValue(fileName, out var hashSet) == false || hashSet == null)
+            {
+                hashSet = tempHistory;
+            }
+            else
+            {
+                var compare = hashSet.Compare(tempHistory);
+                foreach (var item in compare.Data.Removed)
+                {
+                    Console.WriteLine($"!!!! Delete - {item}");
+                    File.Delete(item);
+                }
+                foreach (var item in compare.Enum.Removed)
+                {
+                    Console.WriteLine($"!!!! Delete - {item}");
+                    File.Delete(item);
+                }
+            }
+
+            Config.Default.SaveHistories[fileName] = tempHistory;
+
+            Config.Default.Save();
+            MoveFiles();
+        }
+
+        private void MoveFiles()
+        {
+
         }
 
 
+
+        //private bool ChecksumCSV(string filePath)
+        //{
+        //    using var stream = File.OpenRead(filePath);
+        //    using var sha = SHA256.Create();
+        //    byte[] hash = sha.ComputeHash(stream);
+        //    string checksum = BitConverter.ToString(hash).Replace("-", "");
+
+
+        //    return string.Equals(savedChecksum, checksum) == true;
+        //}
         static List<string> GetExcelFiles(string directoryPath)
         {
             List<string> result = new List<string>();
