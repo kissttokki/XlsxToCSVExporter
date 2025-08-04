@@ -52,6 +52,9 @@ namespace TableExporter
 
         private void LoadData()
         {
+            if (columns.Count != 0)
+                return;
+
             string sheetName = Path.GetFileName(_csvPath);
             string text = File.ReadAllText(_csvPath, Encoding.UTF8);
             string[] lines = text.Split("\r\n");
@@ -69,7 +72,7 @@ namespace TableExporter
                     continue;
                 }
 
-                if (string.IsNullOrWhiteSpace(buildTargetRows[0]) == true)
+                if (string.IsNullOrWhiteSpace(buildTargetRows[col]) == true)
                 {
                     Console.BackgroundColor = ConsoleColor.Red;
                     Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟이 없습니다. 스킵됩니다.");
@@ -85,35 +88,33 @@ namespace TableExporter
                     Console.BackgroundColor = default;
                     continue;
                 }
+
+
+                var value = buildTargetRows[col].ToLower();
+                if (value == "both")
+                {
+                    IsTargetDict.Add(col, true);
+                }
+                else if (value == "client" && ((_buildType & CSVWriteType.Client) > 0))
+                {
+                    IsTargetDict.Add(col, true);
+                }
+                else if (value == "server" && ((_buildType & CSVWriteType.Server) > 0))
+                {
+                    IsTargetDict.Add(col, true);
+                }
                 else
                 {
-                    var value = buildTargetRows[col].ToLower();
-                    if (value == "both")
-                    {
-                        IsTargetDict.Add(col, true);
-                    }
-                    else if (value == "client" && ((_buildType & CSVWriteType.Client) > 0))
-                    {
-                        IsTargetDict.Add(col, true);
-                    }
-                    else if (value == "server" && ((_buildType & CSVWriteType.Server) > 0))
-                    {
-                        IsTargetDict.Add(col, true);
-                    }
-                    else
-                    {
-                        Console.BackgroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟 {buildTargetRows[col].ToLower()}을 알 수 없습니다. 스킵됩니다.");
-                        Console.BackgroundColor = default;
-                        Console.WriteLine();
-                        continue;
-                    }
+                    //Console.BackgroundColor = ConsoleColor.Red;
+                    //Console.WriteLine($"[Warning][{_buildType}] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟 {buildTargetRows[col].ToLower()}을 알 수 없습니다. 스킵됩니다.");
+                    //Console.BackgroundColor = default;
+                    continue;
+                }
 
-                    if (IsTargetDict[col] == true)
-                    {
-                        columns.Add(col, colRowDatas[col]);
-                        dataTypes.Add(col, dataTypeRowData[col]);
-                    }
+                if (IsTargetDict[col] == true)
+                {
+                    columns.Add(col, colRowDatas[col]);
+                    dataTypes.Add(col, dataTypeRowData[col]);
                 }
             }
 
@@ -191,9 +192,6 @@ namespace TableExporter
                     }
                     else
                     {
-                        Console.BackgroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"[Warning] {sheetName} : 컬럼명{(colRowDatas[col])}의 빌드 타겟 {buildTargetRows[col].ToLower()}을 알 수 없습니다. 스킵됩니다.");
-                        Console.BackgroundColor = default;
                         Console.WriteLine();
                         continue;
                     }
@@ -235,6 +233,7 @@ namespace TableExporter
 
         public string GetCSV()
         {
+            LoadData();
             StringBuilder stb = new StringBuilder();
 
             stb.AppendLine(string.Join(',', columns.Values));
@@ -256,18 +255,14 @@ namespace TableExporter
         {
             LoadData();
 
-            string className = Path.GetFileName(_csvPath).Replace(".cs", "");
+            string className = Path.GetFileName(_csvPath).Replace(".csv", "");
+
             var compilationUnit = SyntaxFactory.CompilationUnit()
                .AddUsings(
                    SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")),
                    SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Collections.Generic"))
                );
 
-            //var attr = SyntaxFactory.AttributeList(
-            //    SyntaxFactory.SingletonSeparatedList(
-            //        SyntaxFactory.Attribute(SyntaxFactory.IdentifierName("JsonProperty"))
-            //    )
-            //);
 
 
             var indexCol = columns.FirstOrDefault(col => dataTypes[col.Key].Equals("Index", StringComparison.OrdinalIgnoreCase));

@@ -73,11 +73,13 @@ namespace TableExporter
             }
             finally
             {
+                s_excelApp?.MoveFiles();
                 s_excelApp?.Dispose();
                 s_excelApp = null;
                 Console.WriteLine("프로그램 종료.");
                 Console.ReadLine();
             }
+
 
 
             static bool IsDirectory(string path)

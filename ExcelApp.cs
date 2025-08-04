@@ -212,13 +212,66 @@ namespace TableExporter
             Config.Default.SaveHistories[fileName] = tempHistory;
 
             Config.Default.Save();
-            MoveFiles();
         }
 
-        private void MoveFiles()
+        public void MoveFiles()
         {
+            Console.WriteLine("-----MOVE FILES----");
+            string procDir = new FileInfo(Environment.ProcessPath).Directory.FullName;
 
+            Console.WriteLine($"{procDir}/{PATH_OUTPUT_CLIENT_CSV}");
+            CopyFolder($"{procDir}/{PATH_OUTPUT_CLIENT_CSV}", Config.Default.OutputClientCSVDir);
+            CopyFolder($"{procDir}/{PATH_OUTPUT_SERVER_CSV}", Config.Default.OutputServerCSVDir);
+            CopyFolder($"{procDir}/{PATH_OUTPUT_CLIENT_SCRIPT}", Config.Default.OutputClientCsharpScriptDir);
+            CopyFolder($"{procDir}/{PATH_OUTPUT_SERVER_SCRIPT}", Config.Default.OutputServerCsharpScriptDir);
+            
+            Console.WriteLine("-----COMPLETE----");
         }
+
+
+        private void CopyFolder(string sourceDir, string targetDir)
+        {
+            if (string.IsNullOrEmpty(targetDir)) return;
+
+            if (Directory.Exists(targetDir))
+            {
+                foreach (var file in Directory.GetFiles(targetDir, "*.*", SearchOption.AllDirectories))
+                {
+                    // .meta 파일은 건너뛰기
+                    if (Path.GetExtension(file).Equals(".meta", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    File.Delete(file);
+                }
+
+                foreach (var dir in Directory.GetDirectories(targetDir, "*", SearchOption.AllDirectories))
+                {
+                    // 폴더 내부에 .meta만 남은 경우 삭제
+                    if (!Directory.EnumerateFileSystemEntries(dir).Any(f => !f.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+                        Directory.Delete(dir, recursive: true);
+                }
+            }
+            else
+            {
+                Directory.CreateDirectory(targetDir);
+            }
+
+
+
+            foreach (string dirPath in Directory.GetDirectories(sourceDir, "*", SearchOption.AllDirectories))
+            {
+                Directory.CreateDirectory(dirPath.Replace(sourceDir, targetDir));
+            }
+
+            foreach (string filePath in Directory.GetFiles(sourceDir, "*.*", SearchOption.AllDirectories))
+            {
+                string destFile = filePath.Replace(sourceDir, targetDir);
+                File.Copy(filePath, destFile, overwrite: true);
+
+                Console.WriteLine($"-- Copy {filePath} -> {destFile}");
+            }
+        }
+
 
 
 

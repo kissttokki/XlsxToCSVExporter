@@ -8,9 +8,16 @@
 	 <ResourceLanguages>en</ResourceLanguages>
 	  <SatelliteResourceLanguages>en-US;en</SatelliteResourceLanguages>
 	  <Platforms>AnyCPU;x64</Platforms>
+	  <Configurations>Debug;Release;Bin</Configurations>
   </PropertyGroup>
 
-  <ItemGroup>
+	<PropertyGroup Condition="'$(Configuration)' == 'Bin'">
+		<OutputPath>..\..\Tools\bin-XlsxToCSVExporter</OutputPath>
+		<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+		<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+	</PropertyGroup>
+
+	<ItemGroup>
     <Compile Remove="BaseTableTemplate.cs" />
   </ItemGroup>
 
