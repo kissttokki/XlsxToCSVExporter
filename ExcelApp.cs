@@ -243,13 +243,6 @@ namespace TableExporter
 
                     File.Delete(file);
                 }
-
-                foreach (var dir in Directory.GetDirectories(targetDir, "*", SearchOption.AllDirectories))
-                {
-                    // 폴더 내부에 .meta만 남은 경우 삭제
-                    if (!Directory.EnumerateFileSystemEntries(dir).Any(f => !f.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-                        Directory.Delete(dir, recursive: true);
-                }
             }
             else
             {
@@ -269,6 +262,15 @@ namespace TableExporter
                 File.Copy(filePath, destFile, overwrite: true);
 
                 Console.WriteLine($"-- Copy {filePath} -> {destFile}");
+            }
+
+
+
+            foreach (var dir in Directory.GetDirectories(targetDir, "*", SearchOption.AllDirectories))
+            {
+                // 폴더 내부에 .meta만 남은 경우 삭제
+                if (!Directory.EnumerateFileSystemEntries(dir).Any(f => !f.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+                    Directory.Delete(dir, recursive: true);
             }
         }
 
