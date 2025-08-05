@@ -20,6 +20,9 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
 
     public static IReadOnlyCollection<T> Datas => s_dict.Values;
 
+    public static Action<T> PostProcessCallback;
+    public static Action OnEndParsing;
+
     public static T GetValue(K index)
     {
         if (s_dict.TryGetValue(index, out T result) == true)
@@ -120,6 +123,9 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
             colCount++;
         }
 
+        OnEndParsing?.Invoke();
+
+
         void ProcessLine(ReadOnlySpan<char> line)
         {
             int index = 0;
@@ -199,6 +205,7 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
             }
 
             s_dict.Add(data.GetKey(), data);
+            PostProcessCallback?.Invoke(data);
         }
 
         int CountQuotes(string line)
@@ -252,10 +259,6 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
         }
     }
 
-    protected virtual void OnEndParsing()
-    {
-
-    }
 
     public static MemberSetterDelegate CreateMemberSetter(MemberInfo member)
     {
