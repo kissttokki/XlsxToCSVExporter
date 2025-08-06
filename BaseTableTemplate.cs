@@ -46,8 +46,8 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
     {
         s_dict.Clear();
 
-        MemberInfo[] cachedMembers = null;
-        MemberSetterDelegate[] cachedSetters = null;
+        MemberInfo[]? cachedMembers = null;
+        MemberSetterDelegate[]? cachedSetters = null;
 
         var currentLineBuilder = new StringBuilder();
         var fieldBuilder = new StringBuilder();
@@ -57,12 +57,16 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
         using var ms = new MemoryStream(Encoding.UTF8.GetBytes(csvData ?? ""));
         using var reader = new StreamReader(ms);
 
-        string[] headerCells = null;
+        string[]? headerCells = null;
         bool isInQuotedField = false;
+
+        PropertyInfo? autoIndexProperty = dataType.GetProperty("Index_AutoIncremented", BindingFlags.Public | BindingFlags.Instance);
+        bool isAutoIndexing = autoIndexProperty != null;
+        int rowNumber = 0;
 
         while (!reader.EndOfStream)
         {
-            string line = reader.ReadLine();
+            string? line = reader.ReadLine();
             if (string.IsNullOrEmpty(line)) continue;
 
             // 첫 줄: 헤더 처리
@@ -76,8 +80,7 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
                 for (int col = 0; col < colLen; col++)
                 {
                     string header = headerCells[col].Trim();
-                    var member = dataType.GetField(header, BindingFlags.Public | BindingFlags.Instance)
-                               ?? (MemberInfo)dataType.GetProperty(header, BindingFlags.Public | BindingFlags.Instance);
+                    var member = dataType.GetProperty(header, BindingFlags.Public | BindingFlags.Instance);
 
                     if (member != null)
                     {
@@ -202,6 +205,11 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
 
                     columnIndex++;
                 }
+            }
+
+            if (isAutoIndexing == true)
+            {
+                autoIndexProperty?.SetValue(data, rowNumber++);
             }
 
             s_dict.Add(data.GetKey(), data);

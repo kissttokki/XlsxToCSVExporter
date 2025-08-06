@@ -283,24 +283,28 @@ namespace TableExporter
                 return prop;
             }).ToList();
 
+            List<FieldDeclarationSyntax> fieldMembers = new List<FieldDeclarationSyntax>();
+
             MethodDeclarationSyntax method = null;
 
             if (indexCol.Value == null)
             {
-                members.Add(SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName("int"), "AutoGenrate_INDEX")
-                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.ProtectedKeyword))
-                    .AddAccessorListAccessors(
-                        SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
-                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
-                        SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
-                            .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)))
-                            .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
-                    ));
-
+                // public int Index_AutoIncremented { get; private set; }
+                members.Add(
+                    SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName("int"), "Index_AutoIncremented")
+                        .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                        .AddAccessorListAccessors(
+                            SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
+                            SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
+                                .WithModifiers(SyntaxFactory.TokenList(SyntaxFactory.Token(SyntaxKind.PrivateKeyword)))
+                                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                        )
+                );
 
                 method = SyntaxFactory.MethodDeclaration(SyntaxFactory.ParseTypeName(indexType), "GetKey")
                   .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.OverrideKeyword))
-                  .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(SyntaxFactory.IdentifierName("AutoGenrate_INDEX")))
+                  .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(SyntaxFactory.IdentifierName("Index_AutoIncremented")))
                   .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
             }
             else
@@ -316,6 +320,7 @@ namespace TableExporter
             ClassDeclarationSyntax dataClassDeclaration = SyntaxFactory.ClassDeclaration($"{className}Data")
                 .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
                 .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"BaseTableData<{indexType}>")))
+                .AddMembers(fieldMembers.ToArray())
                 .AddMembers(members.ToArray())
                 .AddMembers(method);
 
