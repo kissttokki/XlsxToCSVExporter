@@ -318,7 +318,7 @@ namespace TableExporter
 
             ///데이터 클래스
             ClassDeclarationSyntax dataClassDeclaration = SyntaxFactory.ClassDeclaration($"{className}Data")
-                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.PartialKeyword))
                 .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"BaseTableData<{indexType}>")))
                 .AddMembers(fieldMembers.ToArray())
                 .AddMembers(members.ToArray())
