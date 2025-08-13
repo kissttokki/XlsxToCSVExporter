@@ -114,7 +114,7 @@ namespace TableExporter
                 if (IsTargetDict[col] == true)
                 {
                     columns.Add(col, colRowDatas[col]);
-                    dataTypes.Add(col, dataTypeRowData[col]);
+                    dataTypes.Add(col, dataTypeRowData[col].Replace("\"", ""));
                 }
             }
 
