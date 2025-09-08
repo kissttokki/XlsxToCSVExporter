@@ -16,7 +16,7 @@ public abstract class BaseTableData<K>
 
 public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
 {
-    protected static readonly Dictionary<K, T> s_dict = new Dictionary<K, T>();
+    protected static Dictionary<K, T> s_dict;
 
     public static IReadOnlyCollection<T> Datas => s_dict.Values;
 
@@ -25,7 +25,7 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
 
     public static T GetValue(K index)
     {
-        if (s_dict.TryGetValue(index, out T result) == true)
+        if (s_dict != null && s_dict.TryGetValue(index, out T result) == true)
         {
             return result;
         }
@@ -38,13 +38,19 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
 #endif
         }
 
-        return result;
+        return null;
     }
 
 
     public static void LoadCsv(string csvData)
     {
-        s_dict.Clear();
+        s_dict = LoadCsvToDictionary(csvData);
+        OnEndParsing?.Invoke();
+    }
+
+    public static Dictionary<K, T> LoadCsvToDictionary(string csvData)
+    {
+        var dict = new Dictionary<K, T>();
 
         MemberInfo[]? cachedMembers = null;
         MemberSetterDelegate[]? cachedSetters = null;
@@ -126,8 +132,7 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
             colCount++;
         }
 
-        OnEndParsing?.Invoke();
-
+        return dict;
 
         void ProcessLine(ReadOnlySpan<char> line)
         {
@@ -212,7 +217,7 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
                 autoIndexProperty?.SetValue(data, rowNumber++);
             }
 
-            s_dict.Add(data.GetKey(), data);
+            dict.Add(data.GetKey(), data);
             PostProcessCallback?.Invoke(data);
         }
 
