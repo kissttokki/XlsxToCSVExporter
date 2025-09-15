@@ -136,89 +136,105 @@ public abstract class BaseTable<T, K> where T : BaseTableData<K>, new()
 
         void ProcessLine(ReadOnlySpan<char> line)
         {
-            int index = 0;
-            int columnIndex = 0;
-            T data = new T();
-
-            while (index < line.Length)
+            try
             {
-                if (line[index] == '"')
+                int index = 0;
+                int columnIndex = 0;
+                T data = new T();
+
+                while (index < line.Length)
                 {
-                    index++;
-                    fieldBuilder.Clear();
-
-                    while (index < line.Length)
+                    if (line[index] == '"')
                     {
-                        int quoteIndex = line.Slice(index).IndexOf('"');
-                        if (quoteIndex == -1)
+                        index++;
+                        fieldBuilder.Clear();
+
+                        while (index < line.Length)
                         {
-                            fieldBuilder.Append(line.Slice(index).ToString());
-                            index = line.Length;
-                            break;
+                            int quoteIndex = line.Slice(index).IndexOf('"');
+                            if (quoteIndex == -1)
+                            {
+                                fieldBuilder.Append(line.Slice(index).ToString());
+                                index = line.Length;
+                                break;
+                            }
+
+                            fieldBuilder.Append(line.Slice(index, quoteIndex).ToString());
+                            int quotePos = index + quoteIndex;
+
+                            if (quotePos + 1 < line.Length && line[quotePos + 1] == '"')
+                            {
+                                fieldBuilder.Append('"');
+                                index = quotePos + 2;
+                            }
+                            else
+                            {
+                                index = quotePos + 1;
+                                break;
+                            }
                         }
 
-                        fieldBuilder.Append(line.Slice(index, quoteIndex).ToString());
-                        int quotePos = index + quoteIndex;
+                        while (index < line.Length && char.IsWhiteSpace(line[index])) index++;
+                        if (index < line.Length && line[index] == ',') index++;
 
-                        if (quotePos + 1 < line.Length && line[quotePos + 1] == '"')
+                        string fieldValue = fieldBuilder.ToString();
+                        if (!string.IsNullOrEmpty(fieldValue))
                         {
-                            fieldBuilder.Append('"');
-                            index = quotePos + 2;
+                            var memberType = GetMemberType(cachedMembers[columnIndex]);
+                            var converted = ConvertType(memberType, fieldValue);
+                            cachedSetters[columnIndex]?.Invoke(data, converted);
                         }
-                        else
-                        {
-                            index = quotePos + 1;
-                            break;
-                        }
-                    }
 
-                    while (index < line.Length && char.IsWhiteSpace(line[index])) index++;
-                    if (index < line.Length && line[index] == ',') index++;
-
-                    string fieldValue = fieldBuilder.ToString();
-                    if (!string.IsNullOrEmpty(fieldValue))
-                    {
-                        var memberType = GetMemberType(cachedMembers[columnIndex]);
-                        var converted = ConvertType(memberType, fieldValue);
-                        cachedSetters[columnIndex]?.Invoke(data, converted);
-                    }
-
-                    columnIndex++;
-                }
-                else
-                {
-                    int commaIndex = line.Slice(index).IndexOf(',');
-                    ReadOnlySpan<char> token;
-
-                    if (commaIndex == -1)
-                    {
-                        token = line.Slice(index).Trim();
-                        index = line.Length;
+                        columnIndex++;
                     }
                     else
                     {
-                        token = line.Slice(index, commaIndex).Trim();
-                        index += commaIndex + 1;
-                    }
+                        int commaIndex = line.Slice(index).IndexOf(',');
+                        ReadOnlySpan<char> token;
 
-                    if (token.Length > 0)
-                    {
-                        var memberType = GetMemberType(cachedMembers[columnIndex]);
-                        var converted = ConvertType(memberType, token.ToString());
-                        cachedSetters[columnIndex]?.Invoke(data, converted);
-                    }
+                        if (commaIndex == -1)
+                        {
+                            token = line.Slice(index).Trim();
+                            index = line.Length;
+                        }
+                        else
+                        {
+                            token = line.Slice(index, commaIndex).Trim();
+                            index += commaIndex + 1;
+                        }
 
-                    columnIndex++;
+                        if (token.Length > 0)
+                        {
+                            var memberType = GetMemberType(cachedMembers[columnIndex]);
+                            var converted = ConvertType(memberType, token.ToString());
+                            cachedSetters[columnIndex]?.Invoke(data, converted);
+                        }
+
+                        columnIndex++;
+                    }
                 }
-            }
 
-            if (isAutoIndexing == true)
+                if (isAutoIndexing == true)
+                {
+                    autoIndexProperty?.SetValue(data, rowNumber++);
+                }
+
+                dict.Add(data.GetKey(), data);
+                PostProcessCallback?.Invoke(data);
+            }
+            catch (Exception ex)
             {
-                autoIndexProperty?.SetValue(data, rowNumber++);
+#if UNITY_EDITOR
+    UnityEngine.Debug.LogError(
+        $"[CSV Parsing Error] Table: {typeof(T).Name}, Row: {dict.Count} - {ex.Message}\nLine: {line.ToString()}"
+    );
+#else
+                Console.WriteLine(
+                    $"[CSV Parsing Error] Table: {typeof(T).Name}, Row: {dict.Count} - {ex.Message}\nLine: {line.ToString()}"
+                );
+#endif
+                // Error occurred, skip this data
             }
-
-            dict.Add(data.GetKey(), data);
-            PostProcessCallback?.Invoke(data);
         }
 
         int CountQuotes(string line)
